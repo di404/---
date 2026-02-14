@@ -8,7 +8,7 @@
 import { SAND_COLORS } from './sandGrid.js';
 
 // 桶容量 - 调整到1000-2000范围，一幅画有6万+像素
-export const CUP_CAPACITY = 1500;
+export const CUP_CAPACITY = 4500;
 
 // 桶状态
 export const CUP_STATE = {

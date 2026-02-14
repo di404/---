@@ -14,12 +14,14 @@
 import SandGrid, { SAND_COLORS, EMPTY } from './sandGrid.js';
 import ConveyorBelt, { CONVEYOR_CONFIG } from './conveyor.js';
 import Cup, { CUP_STATE, CUP_CAPACITY } from './cup.js';
+import ParticleSystem from './particle.js';
 
 // 游戏配置
 const GAME_CONFIG = {
   CANVAS_SIZE: 256,       // 画框大小
-  UPDATE_INTERVAL: 1,     // 落沙更新间隔
-  SUCTION_INTERVAL: 2,    // 吸沙间隔（加快吸沙速度）
+  UPDATE_INTERVAL: 2,     // 落沙更新间隔
+  SUCTION_INTERVAL: 3,    // 吸沙间隔（加快吸沙速度）
+  SUCTION_DEPTH: 2,       // 吸取深度：每列每次吸取的像素数量（可调大/调小）
 };
 
 // 布局配置
@@ -59,6 +61,9 @@ export default class SandGame {
 
     // 初始化传送带
     this.conveyor = new ConveyorBelt(screenWidth, this.canvasY, this.conveyorY);
+    
+    // 初始化粒子系统
+    this.particles = new ParticleSystem();
 
     // 游戏状态
     this.frame = 0;
@@ -218,8 +223,8 @@ export default class SandGame {
       // 获取吸沙范围（桶下方的区域）
       const range = this.conveyor.getSuctionRange(cup.x, this.canvasX);
 
-      // 尝试吸取对应颜色的沙子（只吸最底部的）
-      const removed = this.sandGrid.removeBottomSand(cup.colorIdx, range.start, range.end);
+      // 尝试吸取对应颜色的沙子（吸一个小范围内的）
+      const removed = this.sandGrid.removeBottomSand(cup.colorIdx, range.start, range.end, GAME_CONFIG.SUCTION_DEPTH);
 
       if (removed > 0) {
         // 添加沙子到桶
@@ -229,6 +234,20 @@ export default class SandGame {
           }
         }
         this.score += removed * 10;
+        
+        // 创建粒子特效：沙子从画框底部飞向杯子
+        // 吸沙范围在画框底部的Y坐标
+        const suctionY = this.canvasY + 256;  // 画框底部
+        
+        // 创建粒子（每个被吸的沙子创建1个粒子，追踪杯子）
+        this.particles.createSuctionParticles(
+          removed,           // 粒子数量 = 被吸的沙子数量
+          this.canvasX + range.start,  // 吸沙范围起始X
+          this.canvasX + range.end,    // 吸沙范围结束X
+          suctionY,
+          cup.colorIdx,
+          cup                // 传入杯子对象，粒子会实时追踪
+        );
       }
     }
   }
@@ -278,6 +297,9 @@ export default class SandGame {
     if (this.frame % GAME_CONFIG.SUCTION_INTERVAL === 0) {
       this.processSuction();
     }
+    
+    // 更新粒子特效
+    this.particles.update();
 
     // 检查关卡完成
     if (this.frame % 60 === 0) {
@@ -312,6 +334,9 @@ export default class SandGame {
 
     // 绘制传送带
     this.conveyor.render(this.ctx, this.canvasX);
+    
+    // 绘制粒子特效（在传送带和画框之间）
+    this.particles.render(this.ctx);
 
     // 绘制颜色选择器
     this.renderColorSelector();
@@ -596,5 +621,6 @@ export default class SandGame {
     this.sandGrid.clear();
     this.sandGrid.generatePixelArt(LEVEL_COLORS);
     this.conveyor.reset();
+    this.particles.clear();
   }
 }
