@@ -22,6 +22,7 @@ const GAME_CONFIG = {
   UPDATE_INTERVAL: 2,     // 落沙更新间隔
   SUCTION_INTERVAL: 3,    // 吸沙间隔（加快吸沙速度）
   SUCTION_DEPTH: 2,       // 吸取深度：每列每次吸取的像素数量（可调大/调小）
+  SUCTION_RANGE: 15,      // 吸取垂直范围：距离画框底部多少像素内的沙子才能被吸到（可调）
 };
 
 // 布局配置
@@ -224,7 +225,7 @@ export default class SandGame {
       const range = this.conveyor.getSuctionRange(cup.x, this.canvasX);
 
       // 尝试吸取对应颜色的沙子（吸一个小范围内的）
-      const removed = this.sandGrid.removeBottomSand(cup.colorIdx, range.start, range.end, GAME_CONFIG.SUCTION_DEPTH);
+      const removed = this.sandGrid.removeBottomSand(cup.colorIdx, range.start, range.end, GAME_CONFIG.SUCTION_DEPTH, GAME_CONFIG.SUCTION_RANGE);
 
       if (removed > 0) {
         // 添加沙子到桶

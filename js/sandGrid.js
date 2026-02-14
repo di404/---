@@ -203,17 +203,19 @@ export default class SandGrid {
    * @param {number} xStart - 开始x坐标
    * @param {number} xEnd - 结束x坐标
    * @param {number} suctionDepth - 每列吸取深度（像素数量），默认3
+   * @param {number} maxDistance - 距离底部的最大距离，只有在这个范围内的像素才能被吸到，默认15
    * @returns {number} - 实际移除的数量
    */
-  removeBottomSand(colorIdx, xStart, xEnd, suctionDepth = 3) {
+  removeBottomSand(colorIdx, xStart, xEnd, suctionDepth = 3, maxDistance = 15) {
     const colorValue = colorIdx + 1;
     let removed = 0;
+    const minY = Math.max(0, this.height - maxDistance); // 只搜索靠近底部的区域
 
     // 在指定x范围内，从下往上找该颜色的沙子
     for (let x = Math.max(0, xStart); x < Math.min(this.width, xEnd); x++) {
       let countInColumn = 0;
-      // 从下往上遍历，找到该颜色的沙子，最多吸suctionDepth个
-      for (let y = this.height - 1; y >= 0 && countInColumn < suctionDepth; y--) {
+      // 从下往上遍历，只搜索距离底部maxDistance范围内的像素
+      for (let y = this.height - 1; y >= minY && countInColumn < suctionDepth; y--) {
         if (this.get(x, y) === colorValue) {
           this.set(x, y, EMPTY);
           removed++;
