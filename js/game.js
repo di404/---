@@ -18,11 +18,12 @@ import ParticleSystem from './particle.js';
 
 // 游戏配置
 const GAME_CONFIG = {
-  CANVAS_SIZE: 256,       // 画框大小
+  CANVAS_SIZE: 350,       // 画框显示大小（固定，用于布局）
+  SAND_GRID_SIZE: 100,    // 沙格逻辑大小（可以是 64/128/256 等，会拉伸填满 Canvas）
   UPDATE_INTERVAL: 2,     // 落沙更新间隔
-  SUCTION_INTERVAL: 3,    // 吸沙间隔（加快吸沙速度）
-  SUCTION_DEPTH: 2,       // 吸取深度：每列每次吸取的像素数量（可调大/调小）
-  SUCTION_RANGE: 15,      // 吸取垂直范围：距离画框底部多少像素内的沙子才能被吸到（可调）
+  SUCTION_INTERVAL: 1,    // 吸沙间隔（每帧都吸，更流畅）
+  SUCTION_DEPTH: 1,       // 吸取深度：每列每次吸取1个（更细腻）
+  SUCTION_RANGE: 12,      // 吸取垂直范围：距离画框底部多少像素内的沙子才能被吸到（Canvas 坐标）
 };
 
 // 布局配置
@@ -57,8 +58,8 @@ export default class SandGame {
     this.gridStartY = this.conveyorY + LAYOUT.CONVEYOR_HEIGHT + 35;
     this.gridStartX = (screenWidth - LEVEL_COLORS.length * LAYOUT.GRID_CELL_SIZE) / 2;
 
-    // 初始化落沙网格
-    this.sandGrid = new SandGrid(GAME_CONFIG.CANVAS_SIZE, GAME_CONFIG.CANVAS_SIZE);
+    // 初始化落沙网格（使用逻辑大小，渲染时会拉伸到 Canvas 大小）
+    this.sandGrid = new SandGrid(GAME_CONFIG.SAND_GRID_SIZE, GAME_CONFIG.SAND_GRID_SIZE);
 
     // 初始化传送带
     this.conveyor = new ConveyorBelt(screenWidth, this.canvasY, this.conveyorY);
@@ -209,6 +210,21 @@ export default class SandGame {
   }
 
   /**
+   * 将 Canvas 坐标转换为 Sand Grid 坐标
+   */
+  canvasToGridX(canvasX) {
+    const relativeX = canvasX - this.canvasX;
+    return Math.floor((relativeX / GAME_CONFIG.CANVAS_SIZE) * GAME_CONFIG.SAND_GRID_SIZE);
+  }
+
+  /**
+   * 将 Canvas 距离转换为 Sand Grid 距离
+   */
+  canvasToGridDistance(canvasDist) {
+    return Math.floor((canvasDist / GAME_CONFIG.CANVAS_SIZE) * GAME_CONFIG.SAND_GRID_SIZE);
+  }
+
+  /**
    * 处理吸沙逻辑
    */
   processSuction() {
@@ -221,11 +237,16 @@ export default class SandGame {
       // 检查是否在吸沙区域（画框底部）
       if (!this.conveyor.isInSuctionArea(cup.x, this.canvasX)) continue;
 
-      // 获取吸沙范围（桶下方的区域）
+      // 获取吸沙范围（桶下方的区域）- Canvas 坐标
       const range = this.conveyor.getSuctionRange(cup.x, this.canvasX);
 
-      // 尝试吸取对应颜色的沙子（吸一个小范围内的）
-      const removed = this.sandGrid.removeBottomSand(cup.colorIdx, range.start, range.end, GAME_CONFIG.SUCTION_DEPTH, GAME_CONFIG.SUCTION_RANGE);
+      // 转换为 Sand Grid 坐标
+      const gridStart = this.canvasToGridX(this.canvasX + range.start);
+      const gridEnd = this.canvasToGridX(this.canvasX + range.end);
+      const gridSuctionRange = this.canvasToGridDistance(GAME_CONFIG.SUCTION_RANGE);
+
+      // 尝试吸取对应颜色的沙子
+      const removed = this.sandGrid.removeBottomSand(cup.colorIdx, gridStart, gridEnd, GAME_CONFIG.SUCTION_DEPTH, gridSuctionRange);
 
       if (removed > 0) {
         // 添加沙子到桶
@@ -237,17 +258,16 @@ export default class SandGame {
         this.score += removed * 10;
         
         // 创建粒子特效：沙子从画框底部飞向杯子
-        // 吸沙范围在画框底部的Y坐标
-        const suctionY = this.canvasY + 256;  // 画框底部
+        const suctionY = this.canvasY + GAME_CONFIG.CANVAS_SIZE;  // 画框底部（Canvas 坐标）
         
-        // 创建粒子（每个被吸的沙子创建1个粒子，追踪杯子）
+        // 创建粒子（使用 Canvas 坐标进行视觉展示）
         this.particles.createSuctionParticles(
-          removed,           // 粒子数量 = 被吸的沙子数量
-          this.canvasX + range.start,  // 吸沙范围起始X
-          this.canvasX + range.end,    // 吸沙范围结束X
+          removed * 5, // 粒子数量（每个沙子生成多个粒子）
+          this.canvasX + range.start,
+          this.canvasX + range.end,
           suctionY,
           cup.colorIdx,
-          cup                // 传入杯子对象，粒子会实时追踪
+          cup
         );
       }
     }
@@ -330,8 +350,8 @@ export default class SandGame {
     // 绘制画框
     this.renderCanvasFrame();
 
-    // 绘制落沙像素画
-    this.sandGrid.render(this.ctx, this.canvasX, this.canvasY);
+    // 绘制落沙像素画（拉伸到 Canvas 大小）
+    this.sandGrid.render(this.ctx, this.canvasX, this.canvasY, GAME_CONFIG.CANVAS_SIZE);
 
     // 绘制传送带
     this.conveyor.render(this.ctx, this.canvasX);

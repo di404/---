@@ -127,16 +127,31 @@ export default class Cup {
     if (this.amount > 0) {
       const fillRatio = this.amount / CUP_CAPACITY;
       const fillHeight = fillRatio * (this.height - 18);
+      const surfaceY = this.y + this.height - 6 - fillHeight;
       
-      // 沙子表面
-      ctx.fillStyle = `rgb(${Math.min(255, r + 20)}, ${Math.min(255, g + 20)}, ${Math.min(255, b + 20)})`;
+      // 沙子主体 - 带颗粒感的渐变
+      const sandGradient = ctx.createLinearGradient(
+        centerX - this.width / 2 + 8, surfaceY,
+        centerX + this.width / 2 - 8, this.y + this.height - 6
+      );
+      sandGradient.addColorStop(0, `rgb(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)})`);
+      sandGradient.addColorStop(0.5, `rgb(${r}, ${g}, ${b})`);
+      sandGradient.addColorStop(1, `rgb(${Math.max(0, r - 10)}, ${Math.max(0, g - 10)}, ${Math.max(0, b - 10)})`);
+      
+      ctx.fillStyle = sandGradient;
+      ctx.fillRect(centerX - this.width / 2 + 8, surfaceY, this.width - 16, fillHeight);
+      
+      // 沙子表面 - 微微鼓起的效果
+      ctx.fillStyle = `rgb(${Math.min(255, r + 30)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 30)})`;
       ctx.beginPath();
-      ctx.ellipse(centerX, this.y + this.height - 6 - (1 - fillRatio) * 18, this.width / 2 - 10, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(centerX, surfaceY + 2, this.width / 2 - 10, 5, 0, 0, Math.PI * 2);
       ctx.fill();
       
-      // 沙子主体
-      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      ctx.fillRect(centerX - this.width / 2 + 8, this.y + this.height - 6 - fillHeight, this.width - 16, fillHeight);
+      // 沙子表面高光
+      ctx.fillStyle = `rgba(255, 255, 255, 0.3)`;
+      ctx.beginPath();
+      ctx.ellipse(centerX - 5, surfaceY, (this.width / 2 - 12) * 0.6, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // 桶身边框

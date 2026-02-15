@@ -310,9 +310,13 @@ export default class SandGrid {
 
   /**
    * 渲染到 Canvas
+   * @param {CanvasRenderingContext2D} ctx - 画布上下文
+   * @param {number} offsetX - 目标位置 X
+   * @param {number} offsetY - 目标位置 Y
+   * @param {number} displaySize - 目标显示大小（会被拉伸/缩放以适应）
    */
-  render(ctx, offsetX, offsetY, scale = 1) {
-    // 创建 ImageData
+  render(ctx, offsetX, offsetY, displaySize) {
+    // 创建临时的 ImageData（逻辑大小）
     const imageData = ctx.createImageData(this.width, this.height);
     const data = imageData.data;
 
@@ -339,8 +343,21 @@ export default class SandGrid {
       }
     }
 
-    // 绘制到画布
-    ctx.putImageData(imageData, offsetX, offsetY);
+    // 使用临时 canvas 来绘制，然后拉伸到目标大小
+    const tempCanvas = wx.createCanvas();
+    tempCanvas.width = this.width;
+    tempCanvas.height = this.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.putImageData(imageData, 0, 0);
+
+    // 禁用平滑，保持像素感
+    ctx.imageSmoothingEnabled = false;
+    
+    // 拉伸绘制到目标位置
+    ctx.drawImage(tempCanvas, offsetX, offsetY, displaySize, displaySize);
+    
+    // 恢复平滑设置
+    ctx.imageSmoothingEnabled = true;
   }
 
   /**

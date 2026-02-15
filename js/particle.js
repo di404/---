@@ -1,7 +1,6 @@
 /**
- * 粒子特效系统
- * 被吸走的沙子（像素）会飞向杯子
- * 粒子会实时追踪移动中的杯子
+ * 粒子特效系统 - 像素风格
+ * 沙子像素飞入杯子的效果
  */
 
 import { SAND_COLORS } from './sandGrid.js';
@@ -12,43 +11,39 @@ export default class ParticleSystem {
   }
 
   /**
-   * 创建吸沙粒子（一个像素对应一个粒子）
-   * @param {number} x - 起始X坐标（像素精确位置）
-   * @param {number} y - 起始Y坐标（像素精确位置）
-   * @param {number} colorIdx - 颜色索引
-   * @param {Object} cup - 杯子对象（粒子会追踪这个杯子）
-   */
-  createSuctionParticle(x, y, colorIdx, cup) {
-    const color = SAND_COLORS[colorIdx];
-    
-    this.particles.push({
-      x: x,
-      y: y,
-      cup: cup,  // 存储杯子引用，实时追踪
-      color: color,
-      colorIdx: colorIdx,
-      life: 1.0,  // 生命值 1.0 -> 0.0
-      size: 1,  // 粒子大小 = 1像素（与沙子大小相同）
-      speed: 0.12 + Math.random() * 0.08,  // 飞行速度
-    });
-  }
-
-  /**
-   * 创建多个吸沙粒子（一个沙子一个粒子）
-   * @param {number} count - 沙子数量（粒子数量）
+   * 创建吸沙粒子
+   * @param {number} count - 粒子数量
    * @param {number} startX - 吸沙范围起始X
    * @param {number} endX - 吸沙范围结束X
    * @param {number} y - 起始Y坐标（画框底部）
    * @param {number} colorIdx - 颜色索引
-   * @param {Object} cup - 杯子对象（粒子会追踪这个杯子）
+   * @param {Object} cup - 杯子对象
    */
   createSuctionParticles(count, startX, endX, y, colorIdx, cup) {
-    // 在吸沙范围内均匀分布粒子
     const range = endX - startX;
+    const color = SAND_COLORS[colorIdx];
+
     for (let i = 0; i < count; i++) {
-      // 在吸沙范围内随机分布
       const offsetX = Math.random() * range;
-      this.createSuctionParticle(startX + offsetX, y, colorIdx, cup);
+      const startXPos = startX + offsetX;
+      
+      this.particles.push({
+        x: startXPos,
+        y: y,
+        cup: cup,
+        color: color,
+        colorIdx: colorIdx,
+        // 速度参数
+        vx: (Math.random() - 0.5) * 2,  // 初始水平速度
+        vy: -2 - Math.random() * 2,     // 初始向上速度（被吸起）
+        // 物理参数
+        gravity: 0.3,
+        friction: 0.98,
+        // 追踪参数
+        followStrength: 0.8,  // 追踪杯子的强度
+        // 渲染参数
+        size: 3 + Math.random() * 2.5,  // 2-3.5像素
+      });
     }
   }
 
@@ -59,59 +54,71 @@ export default class ParticleSystem {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       
-      // 获取杯子的当前位置（实时追踪）
-      let targetX, targetY;
-      if (p.cup && p.cup.state !== 0) {  // 杯子还存在且不是空闲状态
-        targetX = p.cup.x;
-        targetY = p.cup.y + 20;  // 杯子内部位置
-      } else {
-        // 杯子已被移除，粒子直接消失
-        p.life = 0;
+      // 检查杯子是否还存在
+      if (!p.cup || p.cup.state === 0) {
+        this.particles.splice(i, 1);
         continue;
       }
       
-      // 计算朝向目标的速度向量
+      // 实时获取杯子的当前位置（追踪移动中的杯子）
+      const targetX = p.cup.x;
+      const targetY = p.cup.y + 18;  // 杯子内部位置
+      
+      // 计算到目标的距离
       const dx = targetX - p.x;
       const dy = targetY - p.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       
-      if (dist < 3) {
-        // 到达目标，移除粒子
-        p.life = 0;
-      } else {
-        // 向目标移动（速度随距离变化，近慢远快）
-        const moveSpeed = Math.min(dist * p.speed, 8);  // 最大速度限制
-        p.vx = (dx / dist) * moveSpeed;
-        p.vy = (dy / dist) * moveSpeed;
-        
-        p.x += p.vx;
-        p.y += p.vy;
-      }
-      
-      // 生命值衰减
-      p.life -= 0.015;
-      
-      // 移除死亡的粒子
-      if (p.life <= 0) {
+      // 如果到达杯子，消失
+      if (dist < 16) {
         this.particles.splice(i, 1);
+        continue;
       }
+      
+      // 追踪目标（实时调整速度朝向杯子）
+      p.vx += dx * p.followStrength * 0.1;
+      p.vy += dy * p.followStrength * 0.1;
+      
+      // 应用重力和摩擦力
+      p.vy += p.gravity;
+      p.vx *= p.friction;
+      p.vy *= p.friction;
+      
+      // 限制最大速度
+      const maxSpeed = 12;
+      const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      if (speed > maxSpeed) {
+        p.vx = (p.vx / speed) * maxSpeed;
+        p.vy = (p.vy / speed) * maxSpeed;
+      }
+      
+      // 更新位置
+      p.x += p.vx;
+      p.y += p.vy;
     }
   }
 
   /**
-   * 渲染所有粒子
+   * 渲染所有粒子 - 纯像素风格
    */
   render(ctx) {
     for (const p of this.particles) {
       const { r, g, b } = p.color;
       
-      // 根据生命值调整透明度
-      const alpha = Math.min(1, p.life * 1.5);
+      // 纯像素绘制，无发光效果
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
       
-      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      // 绘制正方形像素点
+      const size = p.size;
+      const drawX = Math.floor(p.x - size / 2);
+      const drawY = Math.floor(p.y - size / 2);
+      ctx.fillRect(drawX, drawY, size, size);
       
-      // 绘制1x1像素的粒子
-      ctx.fillRect(Math.floor(p.x), Math.floor(p.y), 1, 1);
+      // 可选：中心更亮的像素点（保持像素感）
+      if (size > 2) {
+        ctx.fillStyle = `rgb(${Math.min(255, r + 30)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 30)})`;
+        ctx.fillRect(drawX + 1, drawY + 1, size - 2, size - 2);
+      }
     }
   }
 
