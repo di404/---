@@ -18,8 +18,8 @@ import ParticleSystem from './particle.js';
 
 // 游戏配置
 const GAME_CONFIG = {
-  CANVAS_SIZE: 350,       // 画框显示大小（固定，用于布局）
-  SAND_GRID_SIZE: 100,    // 沙格逻辑大小（可以是 64/128/256 等，会拉伸填满 Canvas）
+  CANVAS_SIZE: 300,       // 画框显示大小（固定，用于布局）
+  SAND_GRID_SIZE: 128,    // 沙格逻辑大小（可以是 64/128/256 等，会拉伸填满 Canvas）
   UPDATE_INTERVAL: 2,     // 落沙更新间隔
   SUCTION_INTERVAL: 1,    // 吸沙间隔（每帧都吸，更流畅）
   SUCTION_DEPTH: 1,       // 吸取深度：每列每次吸取1个（更细腻）
@@ -29,9 +29,9 @@ const GAME_CONFIG = {
 // 布局配置
 const LAYOUT = {
   HEADER_HEIGHT: 60,
-  BOARD_MARGIN_TOP: 10,
+  BOARD_MARGIN_TOP: 40,
   CONVEYOR_HEIGHT: 70,
-  CONVEYOR_MARGIN: 15,
+  CONVEYOR_MARGIN: 35,
   GRID_ROWS: 2,
   GRID_COLS: 6,
   GRID_CELL_SIZE: 50,
@@ -466,16 +466,18 @@ export default class SandGame {
    * 绘制画框
    */
   renderCanvasFrame() {
+    const size = GAME_CONFIG.CANVAS_SIZE;
+    
     this.ctx.fillStyle = '#F8F9FA';
-    this.ctx.fillRect(this.canvasX - 8, this.canvasY - 8, 272, 272);
+    this.ctx.fillRect(this.canvasX - 8, this.canvasY - 8, size + 16, size + 16);
     
     this.ctx.strokeStyle = '#BDC3C7';
     this.ctx.lineWidth = 4;
-    this.ctx.strokeRect(this.canvasX - 6, this.canvasY - 6, 268, 268);
+    this.ctx.strokeRect(this.canvasX - 6, this.canvasY - 6, size + 12, size + 12);
     
     this.ctx.strokeStyle = 'rgba(0,0,0,0.1)';
     this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(this.canvasX - 2, this.canvasY - 2, 260, 260);
+    this.ctx.strokeRect(this.canvasX - 2, this.canvasY - 2, size + 4, size + 4);
   }
 
   /**
